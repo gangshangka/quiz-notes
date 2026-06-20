@@ -2997,6 +2997,7 @@ B. 选项B
       <div class="card" id="quizMapCard">
         <div class="card-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
           <span style="flex:1">333 题库全景</span>
+          <button class="btn btn-sm btn-outline" onclick="openGlobalSearch()" style="font-size:.65rem;padding:3px 7px">🔍 搜索</button>
           <button class="btn btn-sm btn-outline" onclick="openCloudQuizLoader()" style="font-size:.65rem;padding:3px 7px">☁ 云端</button>
           <button class="btn btn-sm btn-outline" onclick="pullDesktopQuestions()" style="font-size:.65rem;padding:3px 7px">📥 桌面</button>
           <button class="btn btn-sm btn-outline" onclick="document.getElementById('syllabusFileInput').click()" style="font-size:.65rem;padding:3px 7px">📐 考纲</button>
@@ -3029,6 +3030,29 @@ B. 选项B
             <span style="font-size:1rem;color:var(--text3)" id="quizJumpCount"></span>
           </div>
           <div id="quizJumpList" style="flex:1;overflow-y:auto;padding:8px"></div>
+        </div>
+      </div>
+      <!-- 全局搜索模态框 -->
+      <div id="globalSearchModal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.5)" onclick="if(event.target===this)this.style.display='none'">
+        <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:16px 16px 0 0;max-height:80vh;display:flex;flex-direction:column;animation:slideUp .3s ease">
+          <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-weight:700;font-size:1rem">🔍 搜索题目</span>
+              <span style="flex:1"></span>
+              <span style="font-size:0.7rem;color:var(--text3)" id="globalSearchCount"></span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <input id="globalSearchInput" type="search" placeholder="搜索题干、选项、答案、解析、知识点...（跨所有题库）" style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:0.9rem;font-family:var(--font);outline:none;background:var(--surface)" oninput="doGlobalSearch(this.value)">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('globalSearchModal').style.display='none'">关闭</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap" id="globalSearchFilters">
+              <button class="btn btn-sm" data-filter="all" onclick="setSearchFilter('all')" style="font-size:0.7rem;padding:3px 10px;border-radius:14px;background:var(--accent4);color:var(--accent);border:1px solid var(--accent3)">全部</button>
+              <button class="btn btn-sm" data-filter="wrong" onclick="setSearchFilter('wrong')" style="font-size:0.7rem;padding:3px 10px;border-radius:14px;background:var(--surface);color:var(--text2);border:1px solid var(--border)">错题</button>
+              <button class="btn btn-sm" data-filter="unanswered" onclick="setSearchFilter('unanswered')" style="font-size:0.7rem;padding:3px 10px;border-radius:14px;background:var(--surface);color:var(--text2);border:1px solid var(--border)">未做</button>
+              <button class="btn btn-sm" data-filter="correct" onclick="setSearchFilter('correct')" style="font-size:0.7rem;padding:3px 10px;border-radius:14px;background:var(--surface);color:var(--text2);border:1px solid var(--border)">已对</button>
+            </div>
+          </div>
+          <div id="globalSearchResults" style="flex:1;overflow-y:auto;padding:8px"></div>
         </div>
       </div>
       <!-- Flow Mode 底部导航 -->
@@ -6021,6 +6045,102 @@ function setupQuizImmersiveObserver(){
   },{root,threshold:[0.45,0.7]});
   currentQuizCards.forEach(card=>quizImmersiveObserver.observe(card));
 }
+
+// ==================== 全局题目搜索 ====================
+let _searchFilter = 'all';
+let _searchLastQuery = '';
+
+window.openGlobalSearch = function(){
+  const modal = document.getElementById('globalSearchModal');
+  if(!modal) return;
+  modal.style.display = 'block';
+  const input = document.getElementById('globalSearchInput');
+  if(input){
+    input.value = _searchLastQuery;
+    setTimeout(() => input.focus(), 100);
+  }
+  doGlobalSearch(_searchLastQuery);
+};
+
+window.setSearchFilter = function(filter){
+  _searchFilter = filter;
+  // 更新按钮样式
+  document.querySelectorAll('#globalSearchFilters button').forEach(b => {
+    if(b.dataset.filter === filter){
+      b.style.background = 'var(--accent4)';
+      b.style.color = 'var(--accent)';
+      b.style.borderColor = 'var(--accent3)';
+    } else {
+      b.style.background = 'var(--surface)';
+      b.style.color = 'var(--text2)';
+      b.style.borderColor = 'var(--border)';
+    }
+  });
+  doGlobalSearch(_searchLastQuery);
+};
+
+window.doGlobalSearch = function(query){
+  _searchLastQuery = query || '';
+  const results = document.getElementById('globalSearchResults');
+  const countEl = document.getElementById('globalSearchCount');
+  if(!results) return;
+  const q = _searchLastQuery.trim().toLowerCase();
+  const items = [];
+  // 遍历所有题库所有题目
+  A.quizBanks.forEach(bank => {
+    bank.questions.forEach(q_obj => {
+      // 过滤器
+      if(_searchFilter !== 'all'){
+        const p = getProgress(bank.id, q_obj.id);
+        if(_searchFilter === 'wrong' && (!p || p.status !== 'wrong')) return;
+        if(_searchFilter === 'correct' && (!p || p.status !== 'correct')) return;
+        if(_searchFilter === 'unanswered' && p && p.status) return;
+      }
+      // 关键词匹配
+      if(q){
+        const haystack = [
+          q_obj.stem, q_obj.answer, q_obj.analysis,
+          q_obj.keywords, q_obj.knowledgePoint, q_obj.source,
+          (q_obj.options || []).map(o => o.text).join(' '),
+          bank.name
+        ].filter(Boolean).join(' ').toLowerCase();
+        if(!haystack.includes(q)) return;
+      }
+      items.push({bank, q: q_obj});
+    });
+  });
+  // 渲染
+  countEl.textContent = items.length + ' 条结果';
+  if(items.length === 0){
+    results.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:0.88rem">' + (q ? '未找到匹配"' + esc(q) + '"的题目' : '输入关键词搜索，或切换上方筛选条件') + '</div>';
+    return;
+  }
+  results.innerHTML = items.map(item => {
+    const p = getProgress(item.bank.id, item.q.id);
+    const dotColor = p ? (p.status === 'correct' ? '#22c55e' : p.status === 'wrong' ? '#ef4444' : '#f59e0b') : '#d1d5db';
+    const code = questionCode(item.bank, item.q);
+    const stem = item.q.stem;
+    // 高亮关键词
+    let stemDisplay = esc(stem.length > 60 ? stem.slice(0,60) + '...' : stem);
+    if(q){
+      const idx = stemDisplay.toLowerCase().indexOf(q);
+      if(idx >= 0){
+        stemDisplay = esc(stem.slice(0, idx)) + '<mark style="background:rgba(253,224,71,0.5);color:#713f12;padding:0 2px">' + esc(stem.slice(idx, idx + q.length)) + '</mark>' + esc(stem.slice(idx + q.length, 60) + (stem.length > 60 ? '...' : ''));
+      }
+    }
+    return '<div class="quiz-tree-q-item" data-bank-id="' + item.bank.id + '" data-q-id="' + item.q.id + '" onclick="globalSearchJump(\'' + item.bank.id + '\',\'' + item.q.id + '\')" style="margin:4px 0;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);flex-wrap:wrap">'
+      + '<span class="q-dot" style="background:' + dotColor + '"></span>'
+      + '<span class="q-code-tree">' + esc(code) + '</span>'
+      + '<span style="font-size:0.62rem;color:var(--text3);background:var(--accent4);padding:1px 6px;border-radius:6px;flex-shrink:0">' + esc(item.bank.name) + '</span>'
+      + '<span class="q-label" style="flex:1;min-width:0;width:100%;margin-top:4px;font-size:0.82rem;line-height:1.4;white-space:normal;overflow:visible;text-overflow:clip">' + stemDisplay + '</span>'
+      + '</div>';
+  }).join('');
+};
+
+window.globalSearchJump = function(bankId, qid){
+  document.getElementById('globalSearchModal').style.display = 'none';
+  jumpToQuestion(bankId, qid);
+};
 
 window.openQuizJump = function() {
   const modal = document.getElementById('quizJumpModal');
