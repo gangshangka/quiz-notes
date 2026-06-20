@@ -2458,6 +2458,28 @@ body.quiz-flow-mode .q-num {
   color: var(--block-color, #1d4ed8);
 }
 
+/* 章节行展开按钮 */
+.chapter-row-expand{
+  width:22px;height:22px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.6rem;color:var(--text3);
+  flex-shrink:0;cursor:pointer;transition:all .12s;
+  background:transparent;border:none;
+}
+.chapter-row-expand:hover{background:rgba(0,0,0,0.06);color:var(--text2)}
+.chapter-row-expand.open{transform:rotate(90deg)}
+
+/* 章节行题目预览列表 */
+.chapter-questions{
+  padding:4px 0 8px 44px;
+  background:rgba(0,0,0,0.015);
+  border-bottom:1px solid rgba(0,0,0,0.04);
+}
+.chapter-questions .quiz-tree-q-item{
+  padding-left:14px;padding-right:14px;
+  font-size:0.72rem;
+}
+
 /* 每日考纲任务面板 */
 .syllabus-daily-panel {
   background: #fff;
@@ -9079,12 +9101,113 @@ function aggregateStats(banks) {
 
 // State: which subject blocks are open
 const subjectBlockOpen = new Set(['principles']);
+// State: which chapter rows are expanded (showing question preview)
+const expandedChapters = new Set();
 
 window.toggleSubjectBlock = function(sid) {
   if (subjectBlockOpen.has(sid)) subjectBlockOpen.delete(sid);
   else subjectBlockOpen.add(sid);
   renderSubjectTree();
 };
+
+// 展开/折叠章节行的题目预览
+window.toggleChapterQuestions = function(bankId, ev){
+  if(ev) ev.stopPropagation();
+  if(expandedChapters.has(bankId)) expandedChapters.delete(bankId);
+  else expandedChapters.add(bankId);
+  renderSubjectTree();
+};
+
+// 长按删除题库（带确认对话框）
+async function confirmDeleteBank(bankId){
+  const bank = A.quizBanks.find(b => b.id === bankId);
+  if(!bank) return;
+  const stats = getQuizBankStats(bank);
+  const ok = await confirmDialog({
+    title:'删除题库', icon:'🗑️',
+    message:'确定删除题库「' + bank.name + '」？\n共 ' + bank.questions.length + ' 题，已做 ' + stats.attempted + ' 题，正确率 ' + stats.accuracy + '%\n删除后无法恢复（含所有答题进度）。',
+    confirmText:'删除', danger:true
+  });
+  if(!ok) return;
+  A.quizBanks = A.quizBanks.filter(b => b.id !== bankId);
+  delete A.quizProgress[bankId];
+  expandedChapters.delete(bankId);
+  if(currentQuizBankId === bankId){
+    currentQuizBankId = null;
+    clearCurrentQuiz();
+  }
+  save();
+  renderQuizBanks();
+  renderBankSelect();
+  toast('题库已删除');
+  if(A.syncCfg.autoSync) syncPush();
+}
+
+// 绑定章节行长按删除
+function bindChapterRowLongPress(){
+  document.querySelectorAll('#subjectTreeMap .chapter-row[data-bank-id]').forEach(el => {
+    if(el._lpBound) return; el._lpBound = true;
+    bindLongPress(el, () => {
+      confirmDeleteBank(el.dataset.bankId);
+    });
+  });
+}
+
+// 生成章节行 HTML（含展开按钮 + 题目预览 + 长按删除钩子）
+function renderChapterRow(bank, cfg){
+  const bStats = getQuizBankStats(bank);
+  const isActive = bank.id === currentQuizBankId;
+  const isMastered = bStats.accuracy >= 80 && bStats.progressPct >= 50;
+  const hasProgress = bStats.attempted > 0;
+  let cls = 'chapter-row';
+  if(isActive) cls += ' active';
+  if(isMastered) cls += ' mastered';
+  else if(hasProgress) cls += ' has-progress';
+  const badge = isMastered ? '✓ 已掌握' : (hasProgress ? bStats.accuracy + '%' : '未开始');
+  const shortName = bank.name.replace(cfg.name, '').replace(/^[\s·\-—]+/, '').replace(/^333[\s\-]*/, '') || bank.name;
+  const isExpanded = expandedChapters.has(bank.id);
+  let html = '<div class="' + cls + '" data-bank-id="' + bank.id + '" onclick="selectBank(\'' + bank.id + '\')"'
+    + ' style="--block-bg:' + cfg.bg + ';--block-color:' + cfg.color + ';--block-light:' + cfg.light + '">'
+    + '<button class="chapter-row-expand' + (isExpanded ? ' open' : '') + '" onclick="toggleChapterQuestions(\'' + bank.id + '\',event)" title="展开题目">▶</button>'
+    + '<div class="chapter-row-dot"></div>'
+    + '<div class="chapter-row-info">'
+    +   '<div class="chapter-row-name">' + esc(shortName || bank.name) + '</div>'
+    +   '<div class="chapter-row-meta">' + bStats.total + '题 · 已做' + bStats.attempted + '题</div>'
+    + '</div>'
+    + '<div class="chapter-row-badge">' + badge + '</div>'
+    + '</div>';
+  // 展开时显示题目预览
+  if(isExpanded){
+    html += '<div class="chapter-questions">';
+    if(bank.questions.length === 0){
+      html += '<div style="padding:6px 14px;font-size:0.72rem;color:var(--text3)">暂无题目</div>';
+    } else {
+      // 按题型分组
+      const typeGroups = {};
+      bank.questions.forEach(q => {
+        const t = q.type || '其他';
+        if(!typeGroups[t]) typeGroups[t] = [];
+        typeGroups[t].push(q);
+      });
+      const typeIcons = { '单选题':'🔘', '多选题':'☑️', '填空题':'✏️', '简答题':'📝', '判断题':'✓✗' };
+      Object.entries(typeGroups).forEach(([type, qs]) => {
+        html += '<div style="padding:4px 14px 2px;font-size:0.66rem;color:var(--text3);font-weight:600">' + (typeIcons[type]||'📄') + ' ' + type + ' · ' + qs.length + '题</div>';
+        qs.forEach(q => {
+          const p = getProgress(bank.id, q.id);
+          const dotColor = p ? (p.status === 'correct' ? '#22c55e' : p.status === 'wrong' ? '#ef4444' : '#f59e0b') : '#d1d5db';
+          const stemPreview = q.stem.length > 32 ? q.stem.slice(0,32) + '...' : q.stem;
+          html += '<div class="quiz-tree-q-item" data-bank-id="' + bank.id + '" data-q-id="' + q.id + '" onclick="event.stopPropagation();jumpToQuestion(\'' + bank.id + '\',\'' + q.id + '\')">'
+            + '<span class="q-dot" style="background:' + dotColor + '"></span>'
+            + '<span class="q-code-tree">' + esc(questionCode(bank, q)) + '</span>'
+            + '<span class="q-label">' + esc(stemPreview) + '</span>'
+            + '</div>';
+        });
+      });
+    }
+    html += '</div>';
+  }
+  return html;
+}
 
 function renderSubjectTree() {
   const el = document.getElementById('subjectTreeMap');
@@ -9132,25 +9255,7 @@ function renderSubjectTree() {
       html += `<div style="padding:12px 14px 12px 44px;font-size:.8rem;color:#B8B4AE">暂无题库 · 点击上方「+ 导入」添加题库</div>`;
     } else {
       banks.forEach(bank => {
-        const bStats = getQuizBankStats(bank);
-        const isActive = bank.id === currentQuizBankId;
-        const isMastered = bStats.accuracy >= 80 && bStats.progressPct >= 50;
-        const hasProgress = bStats.attempted > 0;
-        let cls = 'chapter-row';
-        if (isActive) cls += ' active';
-        if (isMastered) cls += ' mastered';
-        else if (hasProgress) cls += ' has-progress';
-        const badge = isMastered ? '✓ 已掌握' : (hasProgress ? `${bStats.accuracy}%` : '未开始');
-        const shortName = bank.name.replace(cfg.name, '').replace(/^[\s·\-—]+/, '').replace(/^333[\s\-]*/, '') || bank.name;
-        html += `<div class="${cls}" onclick="selectBank('${bank.id}')"
-                   style="--block-bg:${cfg.bg};--block-color:${cfg.color};--block-light:${cfg.light}">
-                   <div class="chapter-row-dot"></div>
-                   <div class="chapter-row-info">
-                     <div class="chapter-row-name">${esc(shortName || bank.name)}</div>
-                     <div class="chapter-row-meta">${bStats.total}题 · 已做${bStats.attempted}题</div>
-                   </div>
-                   <div class="chapter-row-badge">${badge}</div>
-                 </div>`;
+        html += renderChapterRow(bank, cfg);
       });
     }
     html += `</div>`;
@@ -9188,25 +9293,7 @@ function renderSubjectTree() {
       html += `<div style="padding:12px 14px 12px 44px;font-size:.8rem;color:#B8B4AE">暂无题库 · 点击上方「+ 导入」添加题库</div>`;
     } else {
       banks.forEach(bank => {
-        const bStats = getQuizBankStats(bank);
-        const isActive = bank.id === currentQuizBankId;
-        const isMastered = bStats.accuracy >= 80 && bStats.progressPct >= 50;
-        const hasProgress = bStats.attempted > 0;
-        let cls = 'chapter-row';
-        if (isActive) cls += ' active';
-        if (isMastered) cls += ' mastered';
-        else if (hasProgress) cls += ' has-progress';
-        const badge = isMastered ? '✓ 已掌握' : (hasProgress ? `${bStats.accuracy}%` : '未开始');
-        const shortName = bank.name.replace(cfg.name, '').replace(/^[\s·\-—]+/, '').replace(/^333[\s\-]*/, '') || bank.name;
-        html += `<div class="${cls}" onclick="selectBank('${bank.id}')"
-                   style="--block-bg:${cfg.bg};--block-color:${cfg.color};--block-light:${cfg.light}">
-                   <div class="chapter-row-dot"></div>
-                   <div class="chapter-row-info">
-                     <div class="chapter-row-name">${esc(shortName || bank.name)}</div>
-                     <div class="chapter-row-meta">${bStats.total}题 · 已做${bStats.attempted}题</div>
-                   </div>
-                   <div class="chapter-row-badge">${badge}</div>
-                 </div>`;
+        html += renderChapterRow(bank, cfg);
       });
     }
     html += `</div>`;
@@ -9228,18 +9315,9 @@ function renderSubjectTree() {
     html += `<span class="subject-block-arrow${isOpen ? ' open' : ''}" style="color:#9ca3af">▶</span>`;
     html += `</div>`;
     html += `<div class="subject-chapter-list${isOpen ? ' open' : ''}">`;
+    const _otherCfg = {name:'', bg:'#f9fafb', color:'#6366f1', light:'#e0e7ff'};
     groups._other.forEach(bank => {
-      const bStats = getQuizBankStats(bank);
-      const isActive = bank.id === currentQuizBankId;
-      html += `<div class="chapter-row${isActive ? ' active' : ''}" onclick="selectBank('${bank.id}')"
-                 style="--block-bg:#f9fafb;--block-color:#6366f1;--block-light:#e0e7ff">
-                 <div class="chapter-row-dot"></div>
-                 <div class="chapter-row-info">
-                   <div class="chapter-row-name">${esc(bank.name)}</div>
-                   <div class="chapter-row-meta">${bStats.total}题 · 已做${bStats.attempted}题</div>
-                 </div>
-                 <div class="chapter-row-badge">${bStats.attempted > 0 ? bStats.accuracy + '%' : '未开始'}</div>
-               </div>`;
+      html += renderChapterRow(bank, _otherCfg);
     });
     html += `</div></div>`;
   }
@@ -9258,6 +9336,8 @@ function renderSubjectTree() {
       if (nav && sid) nav.dataset.subject = sid;
     }
   }
+  // 绑定章节行长按删除题库
+  bindChapterRowLongPress();
 }
 
 // 四科地图 + SDP 在 init() 里调用，并已在 renderQuizBanks 内直接触发
