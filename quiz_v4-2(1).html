@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#F9F7F1">
@@ -1070,6 +1070,38 @@ body.density-comfortable .quiz-card-q{padding:var(--space-lg) var(--space-xl);ma
   .quiz-tree-q-item .q-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
   .quiz-tree-q-item .q-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+  /* ===== 题目数字编码徽章 ===== */
+  .quiz-card-q .q-num .q-code{
+    font-family:'JetBrains Mono',var(--mono);font-size:0.6rem;color:#7C5CBF;
+    background:rgba(59,89,152,0.08);border:1px solid rgba(59,89,152,0.15);
+    padding:2px 7px;border-radius:6px;font-weight:700;letter-spacing:0.04em;margin-right:6px;
+  }
+  .quiz-tree-q-item .q-code-tree{
+    font-family:'JetBrains Mono',var(--mono);font-size:0.62rem;color:#7C5CBF;
+    background:rgba(59,89,152,0.07);padding:1px 5px;border-radius:4px;flex-shrink:0;font-weight:600;
+  }
+
+  /* ===== 通用确认对话框 ===== */
+  .confirm-modal{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;animation:slideUp .2s}
+  .confirm-box{background:var(--surface);border-radius:16px;padding:22px 20px 16px;width:84%;max-width:360px;text-align:center;animation:slideUp .25s ease}
+  .confirm-icon{font-size:2rem;margin-bottom:6px}
+  .confirm-title{font-weight:700;font-size:1.02rem;margin-bottom:4px}
+  .confirm-msg{font-size:0.82rem;color:var(--text2);margin-bottom:16px;line-height:1.5;white-space:pre-line}
+  .confirm-actions{display:flex;gap:8px}
+  .confirm-actions .btn{flex:1}
+  .btn-danger{background:#ef4444;color:#fff;border:none}
+
+  /* ===== 拖拽视觉反馈（用类替代内联 style，避免闪烁） ===== */
+  .quiz-map-item.quiz-drop-hover,
+  .quiz-tree-header.quiz-drop-hover,
+  .quiz-tagtree-bank.quiz-drop-hover{
+    border-color:var(--purple) !important;
+    box-shadow:0 0 0 3px var(--purple3) !important;
+    background:rgba(124,92,191,0.08) !important;
+  }
+  .quiz-card-q.quiz-card-dragging{opacity:0.45 !important; border:2px dashed var(--purple) !important;}
+  .quiz-map-item.quiz-bank-dragging,.quiz-tree-header.quiz-bank-dragging,.quiz-tagtree-bank.quiz-bank-dragging{opacity:0.5 !important; border:2px dashed var(--coral) !important;}
+
   /* Tag tree view - 毛玻璃效果 */
   .quiz-tagtree-node{margin-bottom:0}
   .quiz-tagtree-header{
@@ -1992,8 +2024,7 @@ body.quiz-flow-mode .quiz-card-q::before {
 
 /* --- 卡片容器占满整个屏幕 --- */
 body.quiz-flow-mode .quiz-card-wrap.flow-active {
-  padding: 0 !important;
-  padding-bottom: 0 !important;
+  padding: 0 16px 110px !important;   /* 底部留出 fixed nav 高度 */
   overflow-y: auto !important;
   align-items: flex-start !important;
 }
@@ -2177,6 +2208,27 @@ body.quiz-flow-mode .quiz-flow-nav {
   background: rgba(59,89,152,0.12);
   border-color: rgba(59,89,152,0.35);
 }
+
+/* ===== 添加新题按钮（顶栏，复用 flow-enter 风格） ===== */
+.quiz-add-enter{
+  display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;padding:5px 12px;
+  border-radius:14px;border:1px solid rgba(34,197,94,0.25);background:rgba(34,197,94,0.08);
+  color:#16a34a;cursor:pointer;font-family:var(--font);font-weight:600;transition:all .15s;
+}
+.quiz-add-enter:hover{background:rgba(34,197,94,0.16);border-color:rgba(34,197,94,0.4)}
+
+/* ===== Flow 模式：提交答案正下方的主"下一题"按钮（防键盘遮挡） ===== */
+.quiz-flow-next-main{
+  display:none;width:100%;margin-top:10px;padding:13px 0;border:1.5px solid rgba(59,89,152,0.25);
+  border-radius:16px;background:rgba(59,89,152,0.06);color:#7C5CBF;
+  font-family:var(--font);font-size:0.95rem;font-weight:700;letter-spacing:0.04em;cursor:pointer;
+  transition:all .18s;
+}
+body.quiz-flow-mode .quiz-flow-next-main{display:block}
+.quiz-flow-next-main:hover{background:rgba(59,89,152,0.12);border-color:rgba(59,89,152,0.4)}
+.quiz-flow-next-main:active{transform:scale(0.98)}
+/* Flow 模式隐藏 footer 里的小"下一题"避免重复 */
+body.quiz-flow-mode .quiz-card-tools .flow-next-btn{display:none !important}
 
 /* --- 反馈区在 Flow 模式下更柔和 --- */
 body.quiz-flow-mode .quiz-feedback {
@@ -3633,6 +3685,74 @@ const ID = () => 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.getElementById('toastContainer').appendChild(e);setTimeout(()=>e.remove(),800)}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function jse(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+
+// ==================== 通用确认对话框 ====================
+function confirmDialog({title='确认操作', message='', confirmText='确认', cancelText='取消', danger=false, icon='⚠️'}={}){
+  return new Promise(resolve=>{
+    const modal=document.createElement('div');
+    modal.className='confirm-modal';
+    modal.innerHTML=`<div class="confirm-box">
+      <div class="confirm-icon">${icon}</div>
+      <div class="confirm-title">${esc(title)}</div>
+      <div class="confirm-msg">${esc(message)}</div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline btn-sm confirm-cancel">${esc(cancelText)}</button>
+        <button class="btn btn-sm confirm-ok ${danger?'btn-danger':'btn-primary'}">${esc(confirmText)}</button>
+      </div></div>`;
+    document.body.appendChild(modal);
+    const close=v=>{modal.remove();resolve(v);};
+    modal.querySelector('.confirm-cancel').onclick=()=>close(false);
+    modal.querySelector('.confirm-ok').onclick=()=>close(true);
+    modal.addEventListener('click',e=>{if(e.target===modal)close(false);});
+  });
+}
+
+// ==================== 长按 500ms 工具函数 ====================
+let _longPressTimer = null, _longPressSuppressed = false;
+function bindLongPress(el, onTrigger, opts={}){
+  const ms = opts.ms||500, moveLimit = opts.moveLimit||10;
+  let sx, sy, started=false;
+  const clear=()=>{ if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null;} started=false; };
+  el.addEventListener('touchstart',e=>{
+    if(e.touches.length>1) return clear();
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; started=true;
+    _longPressTimer=setTimeout(()=>{
+      _longPressTimer=null; started=false; _longPressSuppressed=true;
+      if(navigator.vibrate) navigator.vibrate(15);
+      onTrigger(e);
+    }, ms);
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    if(!started) return;
+    if(Math.abs(e.touches[0].clientX-sx)>moveLimit || Math.abs(e.touches[0].clientY-sy)>moveLimit) clear();
+  },{passive:true});
+  el.addEventListener('touchend',clear,{passive:true});
+  el.addEventListener('touchcancel',clear,{passive:true});
+  el.addEventListener('contextmenu',e=>{ e.preventDefault(); onTrigger(e); });
+}
+
+// ==================== Flow 模式键盘守卫 ====================
+let _flowVVHandler=null;
+function _enableFlowKeyboardGuard(){
+  if(!window.visualViewport) return;
+  _flowVVHandler=()=>{
+    const nav=document.getElementById('quizFlowNav');
+    if(!nav) return;
+    const kb=Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop);
+    nav.style.transform=`translateX(-50%) translateY(${-kb}px)`;
+  };
+  visualViewport.addEventListener('resize',_flowVVHandler);
+  visualViewport.addEventListener('scroll',_flowVVHandler);
+  _flowVVHandler();
+}
+function _disableFlowKeyboardGuard(){
+  if(window.visualViewport && _flowVVHandler){
+    visualViewport.removeEventListener('resize',_flowVVHandler);
+    visualViewport.removeEventListener('scroll',_flowVVHandler);
+  }
+  const nav=document.getElementById('quizFlowNav'); if(nav) nav.style.transform='translateX(-50%)';
+}
+
 function renderStemWithHighlights(stem, highlights) {
   if (!highlights || !highlights.length) return esc(stem);
   let html = esc(stem);
@@ -3715,6 +3835,7 @@ function normalizeQuizQuestion(q, fallbackType){
   }
   normalized.options = opts;
   normalized.tags = Array.isArray(q.tags) ? q.tags.map(t => String(t).trim()).filter(t => t.length > 0) : [];
+  normalized.codeSeq = (typeof q.codeSeq === 'number') ? q.codeSeq : undefined;
   return normalized;
 }
 
@@ -3730,6 +3851,31 @@ function normalizeQuizBank(bank){
   return bank;
 }
 
+// ==================== 题目数字编码（题库缩写-题库内序号） ====================
+function genBankPrefix(name, selfBank){
+  const s = String(name||'');
+  const m = s.match(/[A-Za-z0-9]+/g);
+  let base = m ? m.join('').slice(0,3).toUpperCase() : s.slice(0,2);
+  if(!base) base = 'Q';
+  let p = base, n = 2;
+  const others = A.quizBanks.filter(b => b !== selfBank);
+  while(others.some(b => (b.codePrefix||'') === p)){ p = base + n; n++; }
+  return p;
+}
+function ensureBankCodes(bank){
+  if(!bank) return;
+  if(!bank.codePrefix) bank.codePrefix = genBankPrefix(bank.name, bank);
+  let max = 0;
+  bank.questions.forEach(q => { if(typeof q.codeSeq === 'number' && q.codeSeq > max) max = q.codeSeq; });
+  bank.questions.forEach(q => {
+    if(typeof q.codeSeq !== 'number' || !q.codeSeq){ q.codeSeq = ++max; }
+  });
+}
+function questionCode(bank, q){
+  if(!bank || !q) return '';
+  return (bank.codePrefix||'?') + '-' + String(q.codeSeq||0).padStart(3,'0');
+}
+
 function normalizeAllQuizBanks(){
   if(!Array.isArray(A.quizBanks))A.quizBanks=[];
   A.quizBanks = A.quizBanks.map(bank => {
@@ -3742,6 +3888,7 @@ function normalizeAllQuizBanks(){
     return bank;
   });
   if(!A.quizProgress || typeof A.quizProgress !== 'object')A.quizProgress={};
+  A.quizBanks.forEach(ensureBankCodes);
 }
 
 // ==================== QUESTION TAG SYSTEM ====================
@@ -4323,6 +4470,9 @@ function renderQuizCard(q, index, total) {
   card.className = 'quiz-card-q';
   card.dataset.qid = q.id;
   card.style.marginBottom = '0';
+  card.draggable = true;
+  card.addEventListener('dragstart', onQCardDragStart);
+  card.addEventListener('dragend', onQCardDragEnd);
   wrapper.appendChild(card);
 
   const delBtn = document.createElement('div');
@@ -4333,7 +4483,9 @@ function renderQuizCard(q, index, total) {
   // Question number row: "3/20" on left, type badge on right, menu on far right
   const numDiv = document.createElement('div');
   numDiv.className = 'q-num';
-  numDiv.innerHTML = `<span>${index + 1} / ${total}</span><span class="q-type-tag">${esc(q.type)}</span>`;
+  const _bank = A.quizBanks.find(b => b.id === currentQuizBankId);
+  const _code = questionCode(_bank, q);
+  numDiv.innerHTML = `<span class="q-code">${esc(_code)}</span><span>${index + 1} / ${total}</span><span class="q-type-tag">${esc(q.type)}</span>`;
   card.appendChild(numDiv);
 
   // 右上角展开菜单 ⋯
@@ -4387,6 +4539,8 @@ function renderQuizCard(q, index, total) {
   const isFav = isQuestionFavorited(q.id);
   let lastTap = 0;
   card.addEventListener('click', (e) => {
+    if(_longPressSuppressed){ _longPressSuppressed=false; return; }
+    if(_dragQ||_dragBankId||document.querySelector('.quiz-card-dragging,.quiz-bank-dragging')) return;
     if (e.target.closest('label, input, .quiz-option, .quiz-check-btn, .quiz-mini-btn, .quiz-note-input, button')) return;
     const now = Date.now();
     if (now - lastTap < 300) {
@@ -4626,6 +4780,15 @@ function renderQuizCard(q, index, total) {
   btnDiv.appendChild(checkBtn);
   card.appendChild(btnDiv);
 
+  // Flow 模式：提交按钮正下方的主切题按钮（防键盘遮挡）
+  const flowNextBtn=document.createElement('button');
+  flowNextBtn.className='quiz-flow-next-main';
+  flowNextBtn.textContent='下一题 →';
+  flowNextBtn.style.display='none';
+  flowNextBtn.addEventListener('click',e=>{e.stopPropagation(); flowNavigate(1);});
+  card.appendChild(flowNextBtn);
+  card._flowNextBtn=flowNextBtn;
+
   // Feedback div - 在按钮下方，展开时不影响按钮位置
   const feedbackDiv = document.createElement('div');
   feedbackDiv.className = 'quiz-feedback';
@@ -4786,19 +4949,12 @@ function renderQuizCard(q, index, total) {
   delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!currentQuizBankId) return;
-    const bank = A.quizBanks.find(b => b.id === currentQuizBankId);
-    if (!bank) return;
-    wrapper.style.transition = 'max-height 0.3s, opacity 0.3s';
-    wrapper.style.maxHeight = wrapper.offsetHeight + 'px';
-    requestAnimationFrame(() => { wrapper.style.maxHeight = '0'; wrapper.style.opacity = '0'; wrapper.style.overflow = 'hidden'; });
-    setTimeout(() => {
-      bank.questions = bank.questions.filter(qq => qq.id !== q.id);
-      delete (A.quizProgress[currentQuizBankId] || {})[q.id];
-      recalcBankStats(bank);
-      save(); selectBank(currentQuizBankId);
-      toast('题目已删除');
-      if (A.syncCfg.autoSync) syncPush();
-    }, 300);
+    // 回弹卡片，再弹确认框
+    card.style.transition = 'transform .25s';
+    card.style.transform = 'translateX(0)';
+    delBtn.style.opacity = '0';
+    delBtn.style.pointerEvents = 'none';
+    confirmDeleteQuestion(q.id, currentQuizBankId, wrapper);
   });
 
   // Focus mode - click on stem area to focus
@@ -4832,6 +4988,10 @@ function renderQuizCard(q, index, total) {
   wrapper._card = card;
   wrapper._data = q;
   wrapper.dataset.qid = q.id;
+  // 长按 500ms 删除
+  bindLongPress(card, ()=>{
+    confirmDeleteQuestion(q.id, currentQuizBankId, card);
+  });
   return wrapper;
 }
 
@@ -5600,6 +5760,7 @@ window.selectBank = function(bankId) {
       '</div>' +
     '</div>' +
     '<div class="quiz-immersive-bar-meta" id="quizImmersiveMeta">'+_prog+'/'+_tot+' · '+_acc+'%</div>' +
+    '<button class="quiz-add-enter" onclick="addQuestion()" title="添加新题">➕ 添加</button>' +
     '<button class="quiz-flow-enter" onclick="enterQuizFlow()" title="进入专注模式">🎯 专注</button>' +
   '</div>';
   // Also color the flow nav
@@ -5963,6 +6124,77 @@ window.saveQuestionNote = function(qid, value) {
   if (A.syncCfg.autoSync) syncPush();
 };
 
+// ==================== ADD QUESTION ====================
+window.addQuestion = function(){
+  if(!currentQuizBankId) return toast('请先选择题库');
+  const bank = A.quizBanks.find(b => b.id === currentQuizBankId);
+  if(!bank) return;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML = '<div style="background:var(--surface);border-radius:16px 16px 0 0;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;padding:20px 16px 24px;animation:slideUp .3s ease">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    + '<div style="font-weight:700">➕ 添加新题 到「' + esc(bank.name) + '」</div>'
+    + '<button class="btn btn-outline btn-sm" onclick="copyQuizTemplate()">📋 复制模板</button>'
+    + '</div>'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">题型</div>'
+    + '<input id="addQType" value="单选题" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;margin-bottom:8px;font-family:var(--font);outline:none">'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">题干</div>'
+    + '<textarea id="addQStem" rows="3" placeholder="输入题干..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;margin-bottom:8px;font-family:var(--font);outline:none;resize:vertical"></textarea>'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">选项（每行一个，格式：A. 选项内容）</div>'
+    + '<textarea id="addQOpts" rows="4" placeholder="A. 选项A&#10;B. 选项B" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;margin-bottom:8px;font-family:var(--font);outline:none;resize:vertical"></textarea>'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">答案</div>'
+    + '<textarea id="addQAnswer" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;margin-bottom:8px;font-family:var(--font);outline:none;resize:vertical"></textarea>'
+    + '<div id="addKeywordsWrap" style="display:none;margin-bottom:8px">'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">关键词（用 | 分隔）</div>'
+    + '<input id="addQKeywords" placeholder="词A|词B" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:var(--font);outline:none">'
+    + '</div>'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">解析</div>'
+    + '<textarea id="addQAnalysis" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;margin-bottom:12px;font-family:var(--font);outline:none;resize:vertical"></textarea>'
+    + '<div style="display:flex;gap:6px">'
+    + '<button class="btn btn-primary btn-sm" style="flex:1" id="btnSaveAddQ">💾 保存</button>'
+    + '<button class="btn btn-outline btn-sm" style="flex:1" onclick="this.closest(\'[style*=fixed]\').remove()">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  const typeInput = document.getElementById('addQType');
+  typeInput.addEventListener('input', function(){
+    document.getElementById('addKeywordsWrap').style.display = this.value.includes('简答') ? 'block' : 'none';
+  });
+  document.getElementById('btnSaveAddQ').addEventListener('click', function(){
+    const type = typeInput.value.trim() || '单选题';
+    const stem = document.getElementById('addQStem').value.trim();
+    if(!stem) return toast('请输入题干');
+    const answer = document.getElementById('addQAnswer').value.trim();
+    const analysis = document.getElementById('addQAnalysis').value.trim() || '暂无解析';
+    const optText = document.getElementById('addQOpts').value.trim();
+    let options = [];
+    if(optText){
+      options = optText.split('\n').map(l => {
+        const m = l.match(/^([A-D])[.．、]\s*(.+)/);
+        return m ? {label: m[1], text: m[2].trim()} : null;
+      }).filter(Boolean);
+    }
+    const q = normalizeQuizQuestion({
+      id: ID(), type, stem, options, answer, analysis,
+      explanation: analysis,
+      keywords: type.includes('简答') ? document.getElementById('addQKeywords').value.trim() : '',
+      tags: []
+    });
+    bank.questions.push(q);
+    ensureBankCodes(bank);
+    recalcBankStats(bank);
+    save(); selectBank(bank.id);
+    modal.remove();
+    toast('新题已添加 ✓');
+    if(A.syncCfg.autoSync) syncPush();
+  });
+};
+
+window.copyQuizTemplate = function(){
+  const tpl = '【单选题】题干内容？\nA. 选项A\nB. 选项B\nC. 选项C\nD. 选项D\n答案：A\n解析：解析内容\n知识点：\n难度：\n来源：';
+  doCopy(tpl);
+};
+
 // ==================== EDIT QUESTION ====================
 window.editQuestion = function(qid) {
   if (!currentQuizBankId) return;
@@ -6050,13 +6282,8 @@ window.editQuestion = function(qid) {
   });
 
   document.getElementById('btnDeleteQ').addEventListener('click', function(){
-    if (!confirm('确认删除此题？')) return;
-    bank.questions = bank.questions.filter(qq => qq.id !== qid);
-    recalcBankStats(bank);
-    save(); selectBank(bank.id);
     modal.remove();
-    toast('题目已删除');
-    if (A.syncCfg.autoSync) syncPush();
+    confirmDeleteQuestion(qid, currentQuizBankId, null);
   });
 };
 
@@ -6463,8 +6690,11 @@ function renderQuizMap() {
 
       const typeIcons = { '单选题': '🔘', '多选题': '☑️', '填空题': '✏️', '简答题': '📝', '判断题': '✓✗' };
 
+      const _dropAttrs = 'ondragover="onQDragOver(event)" ondragenter="onQDragEnter(event,\'' + bank.id + '\')" ondragleave="onQDragLeave(event)" ondrop="onQDrop(event,\'' + bank.id + '\')"';
+      const _draggableAttrs2 = 'draggable="true" data-bank-id="' + bank.id + '" ondragstart="onBankDragStart2(event,\'' + bank.id + '\')" ondragend="onBankDragEnd2(event)"';
+
       let html = '<div class="quiz-tree-bank' + (isActive ? ' active' : '') + ' ' + statusClass + '">';
-      html += '<div class="quiz-tree-header" onclick="toggleBankExpand(\'' + bank.id + '\')">';
+      html += '<div class="quiz-tree-header" onclick="toggleBankExpand(\'' + bank.id + '\')" ' + _dropAttrs + ' ' + _draggableAttrs2 + ' style="cursor:grab">';
       html += '<span class="tree-arrow' + (isExpanded ? ' expanded' : '') + '">▶</span>';
       html += '<span class="tree-icon">' + icon + '</span>';
       html += '<div class="tree-info"><div class="tree-name">' + esc(bank.name) + '</div>';
@@ -6481,9 +6711,10 @@ function renderQuizMap() {
             const p = getProgress(bank.id, q.id);
             const dotColor = p ? (p.status === 'correct' ? '#22c55e' : p.status === 'wrong' ? '#ef4444' : '#f59e0b') : '#d1d5db';
             const stemPreview = q.stem.length > 30 ? q.stem.slice(0, 30) + '...' : q.stem;
-            html += '<div class="quiz-tree-q-item" onclick="event.stopPropagation();selectBank(\'' + bank.id + '\')">';
+            html += '<div class="quiz-tree-q-item" data-bank-id="' + bank.id + '" data-q-id="' + q.id + '" onclick="event.stopPropagation();selectBank(\'' + bank.id + '\')">';
             html += '<span class="q-dot" style="background:' + dotColor + '"></span>';
-            html += '<span class="q-label">' + (qi + 1) + '. ' + esc(stemPreview) + '</span></div>';
+            html += '<span class="q-code-tree">' + esc(questionCode(bank, q)) + '</span>';
+            html += '<span class="q-label">' + esc(stemPreview) + '</span></div>';
           });
           html += '</div>';
         });
@@ -6515,8 +6746,12 @@ function renderQuizMap() {
         else if (attempted > 0) color = '#ef4444';
         const isActive = bank.id === currentQuizBankId;
 
+        const _dropAttrs = 'ondragover="onQDragOver(event)" ondragenter="onQDragEnter(event,\'' + bank.id + '\')" ondragleave="onQDragLeave(event)" ondrop="onQDrop(event,\'' + bank.id + '\')"';
+        const _draggableAttrs2 = 'draggable="true" data-bank-id="' + bank.id + '" ondragstart="onBankDragStart2(event,\'' + bank.id + '\')" ondragend="onBankDragEnd2(event)"';
+
         return '<div class="quiz-tagtree-bank' + (isActive ? ' active' : '') + '" onclick="selectBank(\'' + bank.id + '\')"'
-          + ' style="margin-left:' + (depth * 18) + 'px">'
+          + ' ' + _dropAttrs + ' ' + _draggableAttrs2
+          + ' style="margin-left:' + (depth * 18) + 'px;cursor:grab">'
           + '<span class="tb-icon">' + icon + '</span>'
           + '<div class="tb-info">'
           + '<div class="tb-name">' + esc(bank.name) + '</div>'
@@ -6566,11 +6801,13 @@ function renderQuizMap() {
     else if (accuracy >= 60) progressColor = '#f59e0b';
     else if (attempted > 0) progressColor = '#ef4444';
     
-    const draggableAttrs = `draggable="true" data-bank-id="${bank.id}" ondragstart="onBankDragStart(event,'${bank.id}')" ondragover="onBankDragOver(event)" ondragenter="onBankDragEnter(event)" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,'${bank.id}')"`;
-    
+    const _dropAttrs = 'ondragover="onQDragOver(event)" ondragenter="onQDragEnter(event,\'' + bank.id + '\')" ondragleave="onQDragLeave(event)" ondrop="onQDrop(event,\'' + bank.id + '\')"';
+    const _draggableAttrs2 = 'draggable="true" data-bank-id="' + bank.id + '" ondragstart="onBankDragStart2(event,\'' + bank.id + '\')" ondragend="onBankDragEnd2(event)"';
+    const dragDropAttrs = _dropAttrs + ' ' + _draggableAttrs2;
+
     if (quizMapViewMode === 'list') {
       const listTagChips = (bank.tags && bank.tags.length) ? '<div class="map-tags" style="margin-top:4px">' + bank.tags.map(t => '<span class="bank-tag-chip">' + esc(t) + '</span>').join('') + '</div>' : '';
-      return '<div class="quiz-map-item' + (isActive ? ' active' : '') + ' ' + statusClass + '" onclick="selectBank(\'' + bank.id + '\')" ' + draggableAttrs + ' style="display:flex;align-items:center;gap:14px;text-align:left;cursor:grab">'
+      return '<div class="quiz-map-item' + (isActive ? ' active' : '') + ' ' + statusClass + '" onclick="selectBank(\'' + bank.id + '\')" ' + dragDropAttrs + ' style="display:flex;align-items:center;gap:14px;text-align:left;cursor:grab">'
         + '<span style="font-size:1.6rem;flex-shrink:0">' + icon + '</span>'
         + '<div style="flex:1;min-width:0">'
         + '<div class="map-name" style="font-size:0.92rem">' + esc(bank.name) + '</div>'
@@ -6585,7 +6822,7 @@ function renderQuizMap() {
     }
 
     const gridTagChips = (bank.tags && bank.tags.length) ? '<div class="map-tags">' + bank.tags.slice(0, 3).map(t => '<span class="map-tag-chip">' + esc(t.split('/').pop()) + '</span>').join('') + (bank.tags.length > 3 ? '<span style="font-size:0.55rem;color:var(--text3)">+' + (bank.tags.length - 3) + '</span>' : '') + '</div>' : '';
-    return '<div class="quiz-map-item' + (isActive ? ' active' : '') + ' ' + statusClass + '" onclick="selectBank(\'' + bank.id + '\')" ' + draggableAttrs + ' style="cursor:grab">'
+    return '<div class="quiz-map-item' + (isActive ? ' active' : '') + ' ' + statusClass + '" onclick="selectBank(\'' + bank.id + '\')" ' + dragDropAttrs + ' style="cursor:grab">'
       + '<span class="map-icon">' + icon + '</span>'
       + '<div class="map-name" title="' + esc(bank.name) + '">' + esc(bank.name) + '</div>'
       + '<div class="map-meta">' + totalQ + '题 · ' + accuracy + '%</div>'
@@ -6593,87 +6830,172 @@ function renderQuizMap() {
       + '<div class="map-progress"><div class="map-progress-fill" style="width:' + progressPct + '%;background:' + progressColor + '"></div></div>'
       + '</div>';
   }).join('');
+  // 树视图长按删除绑定
+  bindTreeItemLongPress();
 }
 
+// ==================== 拖拽：单题 + 整库（共存，弹对话框确认） ====================
+let _dragQ = null; // {qid, fromBankId, cardEl}
 let _dragBankId = null;
-window.onBankDragStart = function(e, bankId) {
+
+function onQCardDragStart(e){
+  if(_dragBankId){ e.preventDefault(); return; }
+  const card = e.currentTarget;
+  const qid = card.dataset.qid;
+  const fromBankId = currentQuizBankId;
+  _dragQ = {qid, fromBankId, cardEl: card};
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', 'q:' + qid);
+  setTimeout(() => card.classList.add('quiz-card-dragging'), 0);
+}
+function onQCardDragEnd(e){
+  if(_dragQ && _dragQ.cardEl) _dragQ.cardEl.classList.remove('quiz-card-dragging');
+  _dragQ = null;
+  document.querySelectorAll('.quiz-drop-hover').forEach(el => el.classList.remove('quiz-drop-hover'));
+}
+
+window.onBankDragStart2 = function(e, bankId){
   _dragBankId = bankId;
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', bankId);
-  e.target.style.opacity = '0.5';
-  setTimeout(() => { e.target.style.opacity = ''; }, 0);
+  e.dataTransfer.setData('text/plain', 'bank:' + bankId);
+  const item = e.target.closest('[data-bank-id]');
+  if(item) setTimeout(() => item.classList.add('quiz-bank-dragging'), 0);
 };
-
-window.onBankDragOver = function(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-};
-
-window.onBankDragEnter = function(e) {
-  e.preventDefault();
-  const item = e.target.closest('.quiz-map-item');
-  if (item && item.dataset.bankId !== _dragBankId) {
-    item.style.borderColor = 'var(--purple)';
-    item.style.boxShadow = '0 0 0 3px var(--purple3)';
-    item.style.transform = 'scale(1.03)';
-  }
-};
-
-window.onBankDragLeave = function(e) {
-  const item = e.target.closest('.quiz-map-item');
-  if (item) {
-    item.style.borderColor = '';
-    item.style.boxShadow = '';
-    item.style.transform = '';
-  }
-};
-
-window.onBankDrop = function(e, targetBankId) {
-  e.preventDefault();
-  const item = e.target.closest('.quiz-map-item');
-  if (item) {
-    item.style.borderColor = '';
-    item.style.boxShadow = '';
-    item.style.transform = '';
-  }
-  if (!_dragBankId || _dragBankId === targetBankId) return;
-  const srcBank = A.quizBanks.find(b => b.id === _dragBankId);
-  const tgtBank = A.quizBanks.find(b => b.id === targetBankId);
-  if (!srcBank || !tgtBank) return;
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center';
-  modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:20px;width:90%;max-width:400px;text-align:center;animation:slideUp .3s ease">
-    <div style="font-size:2rem;margin-bottom:8px">🔗</div>
-    <div style="font-weight:700;font-size:1rem;margin-bottom:8px">合并题库</div>
-    <div style="font-size:0.88rem;color:var(--text2);margin-bottom:4px">将</div>
-    <div style="font-weight:700;color:var(--purple);font-size:1rem;margin-bottom:4px">「${esc(srcBank.name)}」(${srcBank.questions.length}题)</div>
-    <div style="font-size:0.88rem;color:var(--text2);margin-bottom:4px">合并到</div>
-    <div style="font-weight:700;color:var(--teal);font-size:1rem;margin-bottom:16px">「${esc(tgtBank.name)}」(${tgtBank.questions.length}题)</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary btn-sm" style="flex:1" id="btnConfirmMerge">确认合并</button>
-      <button class="btn btn-outline btn-sm" style="flex:1" onclick="this.closest('[style*=fixed]').remove()">取消</button>
-    </div>
-    <div style="font-size:0.72rem;color:var(--text3);margin-top:8px">合并后「${esc(srcBank.name)}」将被删除</div>
-  </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', function(ev) { if (ev.target === modal) modal.remove(); });
-  document.getElementById('btnConfirmMerge').addEventListener('click', function() {
-    srcBank.questions.forEach(q => {
-      q.id = 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + Math.floor(Math.random()*10000);
-      tgtBank.questions.push(q);
-    });
-    recalcBankStats(tgtBank);
-    A.quizBanks = A.quizBanks.filter(b => b.id !== _dragBankId);
-    delete A.quizProgress[_dragBankId];
-    if (currentQuizBankId === _dragBankId) { currentQuizBankId = null; clearCurrentQuiz(); }
-    _dragBankId = null;
-    save(); renderQuizBanks(); renderBankSelect();
-    modal.remove();
-    toast(`已合并到「${tgtBank.name}」，共 ${tgtBank.questions.length} 题 ✓`);
-    if (A.syncCfg.autoSync) syncPush();
-  });
+window.onBankDragEnd2 = function(e){
+  document.querySelectorAll('.quiz-bank-dragging,.quiz-drop-hover').forEach(el => el.classList.remove('quiz-bank-dragging','quiz-drop-hover'));
   _dragBankId = null;
 };
+
+window.onQDragOver = function(e){ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+window.onQDragEnter = function(e, bankId){
+  e.preventDefault();
+  if(!_dragQ && !_dragBankId) return;
+  if(_dragQ && bankId === _dragQ.fromBankId) return;
+  if(_dragBankId && bankId === _dragBankId) return;
+  const item = e.target.closest('[data-bank-id]');
+  if(item) item.classList.add('quiz-drop-hover');
+};
+window.onQDragLeave = function(e){
+  const item = e.target.closest('[data-bank-id]');
+  if(item && !item.contains(e.relatedTarget)) item.classList.remove('quiz-drop-hover');
+};
+window.onQDrop = function(e, targetBankId){
+  e.preventDefault();
+  const item = e.target.closest('[data-bank-id]');
+  if(item) item.classList.remove('quiz-drop-hover');
+  if(_dragQ){
+    const qid = _dragQ.qid, fromBankId = _dragQ.fromBankId;
+    if(targetBankId === fromBankId){ _dragQ = null; return; }
+    _dragQ = null;
+    openMoveQuestionMenu(qid, fromBankId, targetBankId);
+    return;
+  }
+  if(_dragBankId){
+    const srcId = _dragBankId;
+    if(srcId === targetBankId){ _dragBankId = null; return; }
+    _dragBankId = null;
+    openMergeBanksMenu(srcId, targetBankId);
+    return;
+  }
+};
+
+// 单题移动小菜单
+function openMoveQuestionMenu(qid, fromBankId, suggestedBankId){
+  const fromBank = A.quizBanks.find(b => b.id === fromBankId);
+  const q = fromBank && fromBank.questions.find(x => x.id === qid);
+  if(!q) return;
+  const opts = A.quizBanks.filter(b => b.id !== fromBankId)
+    .map(b => '<option value="' + b.id + '" ' + (b.id === suggestedBankId ? 'selected' : '') + '>' + esc(b.name) + ' (' + b.questions.length + '题)</option>').join('');
+  const modal = document.createElement('div');
+  modal.className = 'confirm-modal';
+  modal.innerHTML = '<div class="confirm-box" style="text-align:left">'
+    + '<div style="text-align:center;font-size:1.6rem;margin-bottom:6px">↪️</div>'
+    + '<div style="font-weight:700;text-align:center;margin-bottom:10px">移动题目到</div>'
+    + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:4px">题目：' + esc(questionCode(fromBank, q)) + ' · ' + esc((q.stem||'').slice(0,20)) + '</div>'
+    + '<select id="moveQTarget" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:var(--font);outline:none;background:var(--surface);margin-bottom:14px">' + opts + '</select>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="btn btn-primary btn-sm" style="flex:1" id="moveQOk">↪️ 移动</button>'
+    + '<button class="btn btn-outline btn-sm" style="flex:1" id="moveQCancel">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  modal.querySelector('#moveQCancel').onclick = () => modal.remove();
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  modal.querySelector('#moveQOk').addEventListener('click', () => {
+    const toId = modal.querySelector('#moveQTarget').value;
+    const toBank = A.quizBanks.find(b => b.id === toId);
+    if(!toBank){ modal.remove(); return; }
+    delete q.codeSeq;
+    const ok = moveQuestionToBank(qid, fromBankId, toId);
+    if(!ok){ modal.remove(); return; }
+    ensureBankCodes(toBank); ensureBankCodes(fromBank);
+    save();
+    if(currentQuizBankId === fromBankId || currentQuizBankId === toId) selectBank(currentQuizBankId);
+    else { renderQuizBanks(); renderQuizMap(); }
+    modal.remove();
+    toast('已移动到「' + toBank.name + '」 ✓');
+    if(A.syncCfg.autoSync) syncPush();
+  });
+}
+
+// 整库合并确认框
+function openMergeBanksMenu(srcId, tgtId){
+  const srcBank = A.quizBanks.find(b => b.id === srcId);
+  const tgtBank = A.quizBanks.find(b => b.id === tgtId);
+  if(!srcBank || !tgtBank) return;
+  confirmDialog({
+    title:'合并题库', icon:'🔗',
+    message:'将「' + srcBank.name + '」(' + srcBank.questions.length + '题) 合并到「' + tgtBank.name + '」(' + tgtBank.questions.length + '题)？\n合并后源题库将被删除，题目进度保留。',
+    confirmText:'合并', danger:true
+  }).then(ok => {
+    if(!ok) return;
+    srcBank.questions.forEach(q => {
+      q.id = 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + Math.floor(Math.random()*10000);
+      delete q.codeSeq;
+      tgtBank.questions.push(q);
+    });
+    ensureBankCodes(tgtBank);
+    recalcBankStats(tgtBank);
+    A.quizBanks = A.quizBanks.filter(b => b.id !== srcId);
+    delete A.quizProgress[srcId];
+    if(currentQuizBankId === srcId){ currentQuizBankId = null; clearCurrentQuiz(); }
+    save(); renderQuizBanks(); renderBankSelect();
+    toast('已合并到「' + tgtBank.name + '」，共 ' + tgtBank.questions.length + ' 题 ✓');
+    if(A.syncCfg.autoSync) syncPush();
+  });
+}
+
+// 统一删除题目（带确认对话框）
+async function confirmDeleteQuestion(qid, bankId, cardEl){
+  const bank = A.quizBanks.find(b => b.id === bankId);
+  if(!bank) return;
+  const q = bank.questions.find(x => x.id === qid);
+  if(!q) return;
+  const code = questionCode(bank, q);
+  const ok = await confirmDialog({
+    title:'删除题目', icon:'🗑️',
+    message:'确定删除 ' + code + ' ？\n"' + (q.stem||'').slice(0,24) + (q.stem && q.stem.length > 24 ? '...' : '') + '"',
+    confirmText:'删除', danger:true
+  });
+  if(!ok) return;
+  bank.questions = bank.questions.filter(x => x.id !== qid);
+  delete (A.quizProgress[bankId]||{})[qid];
+  recalcBankStats(bank);
+  save();
+  if(currentQuizBankId === bankId) selectBank(bankId);
+  else { renderQuizBanks(); renderQuizMap(); }
+  toast('题目已删除');
+  if(A.syncCfg.autoSync) syncPush();
+}
+
+// 树视图长按删除绑定
+function bindTreeItemLongPress(){
+  document.querySelectorAll('#quizMapContainer .quiz-tree-q-item').forEach(el => {
+    if(el._lpBound) return; el._lpBound = true;
+    bindLongPress(el, () => {
+      confirmDeleteQuestion(el.dataset.qId, el.dataset.bankId, null);
+    });
+  });
+}
 
 window.renameQuizBank = function(bankId) {
   const bank = A.quizBanks.find(b => b.id === bankId);
@@ -9163,16 +9485,20 @@ window.enterQuizFlow = function() {
   });
   if (firstUnanswered >= 0) flowCurrentIdx = firstUnanswered;
   showFlowQuestion(flowCurrentIdx);
+  _enableFlowKeyboardGuard();
   toast('已进入专注模式');
 };
 
 window.exitQuizFlow = function() {
   document.body.classList.remove('quiz-flow-mode');
-  // Show all cards again
+  // Show all cards again, hide flow main next buttons
   currentQuizCards.forEach(w => {
     w.classList.remove('flow-active', 'flow-exit');
     w.style.display = '';
+    const b = w._card && w._card._flowNextBtn;
+    if(b) b.style.display = 'none';
   });
+  _disableFlowKeyboardGuard();
   toast('已退出专注模式');
 };
 
@@ -9180,7 +9506,7 @@ function showFlowQuestion(idx) {
   if (idx < 0 || idx >= currentQuizCards.length) return;
   flowCurrentIdx = idx;
 
-  // Hide all, show only current
+  // Hide all, show only current; toggle flow main next button
   currentQuizCards.forEach((w, i) => {
     if (i === idx) {
       w.classList.add('flow-active');
@@ -9190,6 +9516,8 @@ function showFlowQuestion(idx) {
       w.classList.remove('flow-active', 'flow-exit');
       w.style.display = 'none';
     }
+    const b = w._card && w._card._flowNextBtn;
+    if(b) b.style.display = (i === idx && i < currentQuizCards.length - 1) ? 'block' : 'none';
   });
 
   // Update nav info
