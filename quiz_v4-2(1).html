@@ -5470,10 +5470,8 @@ window.clearCurrentQuiz = function() {
   if (jumpBtn) jumpBtn.style.display = 'none';
   currentQuizCards = [];
   currentQuizBankId = null;
-  // 恢复题库地图相关区域显示
-  const mapCard = document.getElementById('quizMapCard');
+  // 恢复 SDP 作战指令显示（题库地图始终显示）
   const sdpPanel = document.getElementById('sdpPanel');
-  if (mapCard) mapCard.style.display = '';
   if (sdpPanel) sdpPanel.style.display = '';
   if (typeof renderSubjectTree === 'function') renderSubjectTree();
   if (typeof renderSDP === 'function') renderSDP();
@@ -5743,6 +5741,24 @@ window.importSyllabus333 = function(ev) {
   ev.target.value = '';
 };
 
+// 从树状概览跳转到指定题库的指定题目
+window.jumpToQuestion = function(bankId, qid){
+  // 如果目标题库不是当前题库，先切换
+  if(currentQuizBankId !== bankId){
+    selectBank(bankId);
+    // 等待题目卡片渲染完成后滚动到目标题
+    setTimeout(() => {
+      const target = currentQuizCards.find(w => w.dataset.qid === qid);
+      if(target) scrollToAndFocus(target);
+    }, 300);
+  } else {
+    // 同题库，直接滚动
+    const target = currentQuizCards.find(w => w.dataset.qid === qid);
+    if(target) scrollToAndFocus(target);
+    else toast('题目未找到');
+  }
+};
+
 window.selectBank = function(bankId) {
   // Exit flow mode if active
   if (document.body.classList.contains('quiz-flow-mode')) {
@@ -5753,7 +5769,7 @@ window.selectBank = function(bankId) {
   if (!bank) return;
   normalizeQuizBank(bank);
   
-  // Hide toggle button, map card and SDP when a bank is selected (cleaner quiz UI)
+  // 选中题库时：保留题库地图显示（作为全题库概览），隐藏 SDP 作战指令
   const toggleBtn = document.getElementById('quizMapToggle');
   const mapCard = document.getElementById('quizMapCard');
   const sdpPanel = document.getElementById('sdpPanel');
@@ -5763,8 +5779,10 @@ window.selectBank = function(bankId) {
     const stats = bank.stats || {};
     document.getElementById('quizMapToggleMeta').textContent = bank.questions.length + '题 · 正确率' + (stats.accuracy || 0) + '%';
   }
-  if (mapCard) mapCard.style.display = 'none';
+  if (mapCard) mapCard.style.display = '';
   if (sdpPanel) sdpPanel.style.display = 'none';
+  // 自动展开当前题库的树节点
+  expandedBanks.add(bankId);
 
   // Detect subject for color theming
   const _sid = detectSubjectId(bank.name) ||
@@ -6460,7 +6478,7 @@ function renderQuizBanks() {
 }
 
 // ==================== QUIZ MAP ====================
-let quizMapViewMode = 'list'; // 'grid', 'list', 'tree', or 'tagtree'
+let quizMapViewMode = 'tree'; // 'grid', 'list', 'tree', or 'tagtree' — 默认树状全题库概览
 let expandedBanks = new Set(); // Track which banks are expanded in tree view
 let expandedTags = new Set(); // Track which tag nodes are expanded in tagtree view
 
@@ -6705,6 +6723,10 @@ function renderQuizMap() {
   const icons = ['📘', '📗', '📙', '📕', '📓', '📔', '📒', '📚', '🔬', '⚡', '🌟', '💡', '🎯', '📝', '🧠'];
   
   if (quizMapViewMode === 'tree') {
+    // 首次进入或无展开记录时，默认展开所有题库
+    if (expandedBanks.size === 0) {
+      A.quizBanks.forEach(b => expandedBanks.add(b.id));
+    }
     container.innerHTML = A.quizBanks.map((bank, idx) => {
       const stats = getQuizBankStats(bank);
       const accuracy = stats.accuracy || 0;
@@ -6756,7 +6778,7 @@ function renderQuizMap() {
             const p = getProgress(bank.id, q.id);
             const dotColor = p ? (p.status === 'correct' ? '#22c55e' : p.status === 'wrong' ? '#ef4444' : '#f59e0b') : '#d1d5db';
             const stemPreview = q.stem.length > 30 ? q.stem.slice(0, 30) + '...' : q.stem;
-            html += '<div class="quiz-tree-q-item" data-bank-id="' + bank.id + '" data-q-id="' + q.id + '" onclick="event.stopPropagation();selectBank(\'' + bank.id + '\')">';
+            html += '<div class="quiz-tree-q-item" data-bank-id="' + bank.id + '" data-q-id="' + q.id + '" onclick="event.stopPropagation();jumpToQuestion(\'' + bank.id + '\',\'' + q.id + '\')">';
             html += '<span class="q-dot" style="background:' + dotColor + '"></span>';
             html += '<span class="q-code-tree">' + esc(questionCode(bank, q)) + '</span>';
             html += '<span class="q-label">' + esc(stemPreview) + '</span></div>';
