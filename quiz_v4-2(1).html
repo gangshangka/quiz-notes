@@ -1324,6 +1324,16 @@ body.density-comfortable .quiz-card-q{padding:var(--space-lg) var(--space-xl);ma
   flex-shrink: 0;
   animation: osPulse 2.5s ease-in-out infinite;
 }
+/* 返回上一级按钮（题库顶栏左侧） */
+.quiz-back-btn{
+  width:30px;height:30px;border-radius:var(--radius-sm);
+  border:none;background:transparent;
+  font-size:1.15rem;color:#2D2D2D;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .15s ease;
+}
+.quiz-back-btn:hover{background:rgba(59,89,152,0.08);color:var(--purple)}
+.quiz-back-btn:active{background:var(--purple4);transform:scale(.95)}
 @keyframes osPulse {
   0%,100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -5462,6 +5472,17 @@ window.clearCurrentQuiz = function() {
   currentQuizBankId = null;
 };
 
+// 刷题/专注模式返回上一级
+window.quizBack = function(){
+  if(document.body.classList.contains('quiz-flow-mode')){
+    exitQuizFlow();
+  } else if(currentQuizBankId){
+    clearCurrentQuiz();
+  } else {
+    switchMainTab('dashboard');
+  }
+};
+
 window.resetQuizProgress = function() {
   if (!currentQuizBankId) return;
   if (!confirm('确认重置当前题库的所有答题进度？')) return;
@@ -5752,6 +5773,7 @@ window.selectBank = function(bankId) {
   const _pct = _tot > 0 ? Math.round(_prog/_tot*100) : 0;
   const _bc = _acc >= 80 ? '#22c55e' : _acc >= 50 ? '#f59e0b' : _accentColor;
   container.innerHTML = '<div class="quiz-immersive-bar" id="quizImmersiveBar"' + (_sid ? ` data-subject="${_sid}"` : '') + '>' +
+    '<button class="quiz-back-btn" onclick="quizBack()" title="返回上一级">←</button>' +
     '<div class="quiz-immersive-bar-dot" style="background:'+_bc+';box-shadow:0 0 8px '+_bc+'"></div>' +
     '<div style="flex:1;min-width:0">' +
       '<div class="quiz-immersive-bar-title" id="quizImmersiveTitle">' + esc(bank.name) + '</div>' +
