@@ -5470,6 +5470,13 @@ window.clearCurrentQuiz = function() {
   if (jumpBtn) jumpBtn.style.display = 'none';
   currentQuizCards = [];
   currentQuizBankId = null;
+  // 恢复题库地图相关区域显示
+  const mapCard = document.getElementById('quizMapCard');
+  const sdpPanel = document.getElementById('sdpPanel');
+  if (mapCard) mapCard.style.display = '';
+  if (sdpPanel) sdpPanel.style.display = '';
+  if (typeof renderSubjectTree === 'function') renderSubjectTree();
+  if (typeof renderSDP === 'function') renderSDP();
 };
 
 // 刷题/专注模式返回上一级
@@ -5746,12 +5753,12 @@ window.selectBank = function(bankId) {
   if (!bank) return;
   normalizeQuizBank(bank);
   
-  // Show toggle button and hide map card + SDP
+  // Hide toggle button, map card and SDP when a bank is selected (cleaner quiz UI)
   const toggleBtn = document.getElementById('quizMapToggle');
   const mapCard = document.getElementById('quizMapCard');
   const sdpPanel = document.getElementById('sdpPanel');
   if (toggleBtn) {
-    toggleBtn.style.display = 'flex';
+    toggleBtn.style.display = 'none';
     document.getElementById('quizMapToggleName').textContent = bank.name;
     const stats = bank.stats || {};
     document.getElementById('quizMapToggleMeta').textContent = bank.questions.length + '题 · 正确率' + (stats.accuracy || 0) + '%';
