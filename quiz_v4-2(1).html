@@ -6358,50 +6358,66 @@ window.copyQuestionToClipboard = function(qid) {
   const q = bank.questions.find(qq => qq.id === qid);
   if (!q) return;
   const p = getProgress(currentQuizBankId, qid);
-  let text = `【${q.type}】${q.stem}`;
+  const code = questionCode(bank, q);
+  let text = `【${q.type}】${code}\n${q.stem}`;
   if (q.options && q.options.length) {
     text += '\n' + q.options.map(o => `${o.label}. ${o.text}`).join('\n');
   }
   text += `\n答案：${q.answer}`;
-  if (p && p.answer) {
-    text += `\n我的作答：${p.answer}`;
-    text += `\n${p.status === 'correct' ? '✓ 正确' : '✗ 错误'}`;
-  }
   if (q.analysis) text += `\n解析：${q.analysis}`;
-  if (p && p.notes) text += `\n笔记：${p.notes}`;
+  // 做题情况
+  if (p && p.ts) {
+    text += `\n--- 做题情况 ---`;
+    text += `\n作答时间：${p.ts.replace('T',' ').slice(0,16)}`;
+    if (p.answer) {
+      text += `\n我的作答：${p.answer}`;
+    }
+    if (p.status === 'correct') text += `\n结果：✓ 正确`;
+    else if (p.status === 'wrong') text += `\n结果：✗ 错误`;
+    else if (p.status) text += `\n结果：${p.status}`;
+    if (p.matchPct !== undefined && p.matchPct > 0) text += `\n关键词匹配：${p.matchPct}%`;
+    if (p.notes) text += `\n笔记：${p.notes}`;
+    if (p.aiFeedback) text += `\nAI反馈：${p.aiFeedback}`;
+    if (p.aiScore) text += `\nAI评分：${p.aiScore}`;
+  } else {
+    text += `\n--- 做题情况 ---\n未作答`;
+  }
   doCopy(text);
 };
 
 function doCopy(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
+  // 优先用 Clipboard API（需 HTTPS 或 localhost）
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
       toast('已复制 ✓');
     }).catch(() => {
-      fallbackCopy(text);
+      if (!fallbackCopy(text)) promptCopy(text);
     });
-  } else {
-    fallbackCopy(text);
+    return;
   }
+  // file:// 等非安全上下文：直接用 execCommand fallback
+  if (!fallbackCopy(text)) promptCopy(text);
 }
 
 function fallbackCopy(text) {
   try {
     const ta = document.createElement('textarea');
     ta.value = text;
-    ta.style.cssText = 'position:fixed;left:0;top:0;opacity:0;z-index:99999';
+    // 关键：移出可视区且不占焦点，避免页面跳动
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;z-index:99999';
+    ta.setAttribute('readonly', '');
     document.body.appendChild(ta);
-    ta.focus();
     ta.select();
     ta.setSelectionRange(0, ta.value.length);
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     if (ok) {
       toast('已复制 ✓');
-    } else {
-      promptCopy(text);
+      return true;
     }
+    return false;
   } catch(e) {
-    promptCopy(text);
+    return false;
   }
 }
 
